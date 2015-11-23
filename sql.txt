@@ -1,0 +1,164 @@
+Устанавливаем сервер БД:
+$ sudo apt-get install mysql-server mysql-client
+
+Подключаемся к серверу БД:
+$ mysql -u root -p
+
+Создаем базу:
+mysql> CREATE DATABASE multicarta;
+
+Переключаемся на созданную базу:
+mysql> USE multicarta;
+
+Создаем таблицу "Справочник полов" - sex:
+mysql> CREATE TABLE sex (
+    -> id INT AUTO_INCREMENT PRIMARY KEY,
+    -> sex VARCHAR(1));
+Note: Вместо NUMBER NOT NULL для поля id здесь и далее я буду использовать INT AUTO_INCREMENT PRIMARY KEY потому, что MySQL.
+
+Заполняем таблицу данными:
+mysql> INSERT INTO sex VALUES (NULL, 'М');
+mysql> INSERT INTO sex VALUES (NULL, 'Ж');
+Проверим, что у нас получилось:
+mysql> SELECT * FROM sex;
++----+------+
+| id | sex  |
++----+------+
+|  1 | М    |
+|  2 | Ж    |
++----+------+
+mysql> DESC sex;
++-------+------------+------+-----+---------+----------------+
+| Field | Type       | Null | Key | Default | Extra          |
++-------+------------+------+-----+---------+----------------+
+| id    | int(11)    | NO   | PRI | NULL    | auto_increment |
+| sex   | varchar(1) | YES  |     | NULL    |                |
++-------+------------+------+-----+---------+----------------+
+
+Создаем вторую таблицу "Список сотрудников" - employees:
+mysql> CREATE TABLE employees (
+    -> id INT AUTO_INCREMENT PRIMARY KEY,
+    -> sex_id INT,
+    -> fio VARCHAR(100),
+    -> FOREIGN KEY (sex_id) REFERENCES sex (id));
+
+Заполняем таблицу данными:
+mysql> INSERT INTO employees VALUES (
+    -> NULL, (SELECT id FROM sex WHERE sex = 'Ж'), 'Шишкова Екатерина Евгеньевна');
+mysql> INSERT INTO employees VALUES (NULL, (SELECT id FROM sex WHERE sex = 'Ж'), 'Устинова Виктория Леонидовна');
+mysql> INSERT INTO employees VALUES (NULL, (SELECT id FROM sex WHERE sex = 'Ж'), 'Биктимирова Екатерина Дмитриевна');
+mysql> INSERT INTO employees VALUES (NULL, (SELECT id FROM sex WHERE sex = 'М'), 'Брайнин Михаил Борисович');
+mysql> INSERT INTO employees VALUES (NULL, (SELECT id FROM sex WHERE sex = 'М'), 'Тимохов Геннадий Андреевич');
+mysql> INSERT INTO employees VALUES (NULL, (SELECT id FROM sex WHERE sex = 'М'), 'Семёнов Александр Анатольевич');
+mysql> INSERT INTO employees VALUES (NULL, (SELECT id FROM sex WHERE sex='Ж'),'Фадеева Лилия Андреевна');
+
+Проверим, что у нас получилось:
+mysql> DESC employees;
++--------+--------------+------+-----+---------+----------------+
+| Field  | Type         | Null | Key | Default | Extra          |
++--------+--------------+------+-----+---------+----------------+
+| id     | int(11)      | NO   | PRI | NULL    | auto_increment |
+| sex_id | int(11)      | YES  | MUL | NULL    |                |
+| fio    | varchar(100) | YES  |     | NULL    |                |
++--------+--------------+------+-----+---------+----------------+
+mysql> SELECT * FROM employees;
++----+--------+----------------------------------------------------------------+
+| id | sex_id | fio                                                            |
++----+--------+----------------------------------------------------------------+
+|  1 |      2 | Шишкова Екатерина Евгеньевна                                   |
+|  2 |      2 | Устинова Виктория Леонидовна                                   |
+|  3 |      2 | Биктимирова Екатерина Дмитриевна                               |
+|  4 |      1 | Брайнин Михаил Борисович                                       |
+|  5 |      1 | Тимохов Геннадий Андреевич                                     |
+|  6 |      1 | Семёнов Александр Анатольевич                                  |
+|  7 |      2 | Фадеева Лилия Андреевна                                        |
++----+--------+----------------------------------------------------------------+
+
+Получим при помощи SQL запроса количество мужчин и женщин в организации:
+mysql> SELECT CASE
+    -> WHEN s.sex='М' THEN 'Мужчины'
+    -> WHEN s.sex='Ж' THEN 'Женщины'
+    -> END Сотрудники, 
+    -> COUNT(e.sex_id) Количество FROM sex s INNER JOIN employees e ON
+    -> s.id=e.sex_id GROUP BY e.sex_id;
++----------------------+----------------------+
+| Сотрудники           | Количество           |
++----------------------+----------------------+
+| Мужчины              |                    3 |
+| Женщины              |                    4 |
++----------------------+----------------------+
+
+Определим при помощи SQL запроса отношение количества мужчин к количеству женщин:
+mysql> SELECT (SELECT COUNT(*) FROM employees WHERE sex_id=(SELECT id FROM sex WHERE sex='М'))/(SELECT COUNT(*) FROM employees WHERE sex_id=(SELECT id FROM sex WHERE sex='Ж')) AS Отношение;
++--------------------+
+| Отношение          |
++--------------------+
+|             0.7500 |
++--------------------+
+
+=================================================
+
+Создадим таблицы для второй задачи и заполним их данными:
+mysql> CREATE TABLE attr (
+    -> id INT AUTO_INCREMENT PRIMARY KEY,
+    -> attr_name VARCHAR(30));
+mysql> INSERT INTO attr VALUES(NULL, 'Фамилия');
+mysql> INSERT INTO attr VALUES(NULL, 'Имя');
+mysql> INSERT INTO attr VALUES(NULL, 'Отчество');
+mysql> INSERT INTO attr VALUES(NULL, 'Табельный номер');
+mysql> INSERT INTO attr VALUES(NULL, 'Оклад');
+mysql> CREATE TABLE person (
+    -> id INT NOT NULL,
+    -> attr_id INT NOT NULL,
+    -> attr_data VARCHAR(80) NOT NULL,
+    -> PRIMARY KEY (id,attr_id),
+    -> FOREIGN KEY (attr_id) REFERENCES attr(id));
+mysql> INSERT INTO person VALUES(1,1,'Иванов');
+mysql> INSERT INTO person VALUES(1,2,'Сидор');
+mysql> INSERT INTO person VALUES(1,3,'Петрович');
+mysql> INSERT INTO person VALUES(1,4,'1122');
+mysql> INSERT INTO person VALUES(1,5,'100000');
+
+Проверяем:
+mysql> DESC attr;
++-----------+-------------+------+-----+---------+----------------+
+| Field     | Type        | Null | Key | Default | Extra          |
++-----------+-------------+------+-----+---------+----------------+
+| id        | int(11)     | NO   | PRI | NULL    | auto_increment |
+| attr_name | varchar(30) | YES  |     | NULL    |                |
++-----------+-------------+------+-----+---------+----------------+
+mysql> SELECT * FROM attr;
++----+-------------------------------+
+| id | attr_name                     |
++----+-------------------------------+
+|  1 | Фамилия                       |
+|  2 | Имя                           |
+|  3 | Отчество                      |
+|  4 | Табельный номер               |
+|  5 | Оклад                         |
++----+-------------------------------+
+mysql> DESC person;
++-----------+-------------+------+-----+---------+-------+
+| Field     | Type        | Null | Key | Default | Extra |
++-----------+-------------+------+-----+---------+-------+
+| id        | int(11)     | NO   | PRI | NULL    |       |
+| attr_id   | int(11)     | NO   | PRI | NULL    |       |
+| attr_data | varchar(80) | NO   |     | NULL    |       |
++-----------+-------------+------+-----+---------+-------+
+mysql> SELECT * FROM person;
++----+---------+------------------+
+| id | attr_id | attr_data        |
++----+---------+------------------+
+|  1 |       1 | Иванов           |
+|  1 |       2 | Сидор            |
+|  1 |       3 | Петрович         |
+|  1 |       4 | 1122             |
+|  1 |       5 | 100000           |
+|  2 |       1 | Сидоров          |
+|  2 |       2 | Петр             |
+|  2 |       3 | Иванович         |
+|  2 |       4 | 1123             |
+|  2 |       5 | 20000            |
++----+---------+------------------+
+
+Выведем ведомость сотрудников, содержащую столбцы: Табельный номер, ФИО
